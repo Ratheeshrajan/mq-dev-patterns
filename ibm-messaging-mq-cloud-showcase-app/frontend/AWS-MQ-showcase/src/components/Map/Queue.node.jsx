@@ -24,7 +24,7 @@ import NodeCard from './NodeCard';
 import QueueVisualizer from './QueueVisualizer';
 import { toast } from 'react-toastify';
 
-const MAX_QUEUE_DEPTH = 500;
+const FALLBACK_MAX_DEPTH = 5000;
 const HEADER_BG = '#161616';
 const HEADER_BORDER = '#161616';
 
@@ -56,6 +56,7 @@ const QueueNode = ({ id, data, isConnectable }) => {
   const edges = p2pHasNode ? p2pEdges : rrEdges;
 
   const [currentDepth, setCurrentDepth] = useState(0);
+  const [maxDepth, setMaxDepth] = useState(FALLBACK_MAX_DEPTH);
   const prevDepthRef = useRef(0);
   const [landCount, setLandCount] = useState(0);
   const [drainCount, setDrainCount] = useState(0);
@@ -91,9 +92,11 @@ const QueueNode = ({ id, data, isConnectable }) => {
           let result = await adapter.getAllDepths(false);
           setCandSend(true);
           if (!Number.isInteger(result)) {
-            let _lastDepth = result.find(q => q.name === data.queueName)[
-              'depth'
-            ];
+            const queueEntry = result.find(q => q.name === data.queueName);
+            let _lastDepth = queueEntry['depth'];
+            if (queueEntry['maxDepth'] != null) {
+              setMaxDepth(queueEntry['maxDepth']);
+            }
             _updateQueuedata(result);
             // Keep the store's depth map current so consumeMessageFromQueue
             // can make the right decision about whether to drain a plate.
@@ -156,7 +159,7 @@ const QueueNode = ({ id, data, isConnectable }) => {
     </>
   );
 
-  const fillPct = Math.min((currentDepth / MAX_QUEUE_DEPTH) * 100, 100);
+  const fillPct = Math.min((currentDepth / maxDepth) * 100, 100);
   const label = isTmpQueue ? 'Reply Queue' : 'Queue';
 
   return (
@@ -189,7 +192,7 @@ const QueueNode = ({ id, data, isConnectable }) => {
               />
             </div>
             <p className="queue-node__depth">
-              {currentDepth} / {MAX_QUEUE_DEPTH} msgs
+              {currentDepth} / {maxDepth} msgs
             </p>
           </div>
         </div>
@@ -198,7 +201,7 @@ const QueueNode = ({ id, data, isConnectable }) => {
         className="node-card__count-footer"
         style={{ margin: '0 -12px -12px', justifyContent: 'space-between' }}>
         <span>
-          Max depth:&nbsp;<strong>{MAX_QUEUE_DEPTH}</strong>
+          Max depth:&nbsp;<strong>{maxDepth}</strong>
         </span>
         <span className="queue-node__footer-status">
           <CheckmarkFilled size={14} className="queue-node__status-icon" />
